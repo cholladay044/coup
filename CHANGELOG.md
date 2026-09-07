@@ -11,6 +11,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), and vers
 
 Committed to `master` but **not yet deployed** to production.
 
+## [1.1.0] - 2026-09-07
+
+Deployed to Render (`coup-server`) and Vercel (`coup`, alias `coup-canopy.vercel.app`).
+
 ### Added
 - In-game "How to Play" rules modal — a "?" button (bottom-right) opens a scrollable overlay
   covering the objective, actions, and character abilities, sourced from the same data the
@@ -50,5 +54,6 @@ Initial public release. Deployed to Render (`coup-server`) and Vercel (`coup`).
 - Player name/"(you)" tag overlapping the cards below it when a card is in its "claimed" glow
   state.
 
-[Unreleased]: https://github.com/cholladay044/coup/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/cholladay044/coup/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/cholladay044/coup/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/cholladay044/coup/releases/tag/v1.0.0
