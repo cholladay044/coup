@@ -485,6 +485,93 @@ button.danger {
   max-width: 640px;
 }
 
+.rules-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a1a1a;
+  font-size: 1.3rem;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  z-index: 5;
+}
+
+.rules-fab:hover {
+  background: var(--accent-dim);
+  color: white;
+}
+
+.rules-modal {
+  text-align: left;
+  max-width: 560px;
+  width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px;
+}
+
+.rules-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.rules-header h3 {
+  margin: 0;
+}
+
+.rules-close {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.rules-close:hover {
+  color: var(--text);
+}
+
+.rules-body {
+  overflow-y: auto;
+}
+
+.rules-body section {
+  margin-bottom: 16px;
+}
+
+.rules-body h4 {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rules-body p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.rules-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
 .card-choice-row {
   display: flex;
   gap: 10px;
@@ -529,6 +616,22 @@ button.danger {
   color: var(--text-dim);
 }
 
+@media (max-width: 980px) {
+  .log-feed {
+    max-height: 160px;
+  }
+}
+
 .log-entry {
   padding: 2px 0;
+}
+
+.log-entry-turn {
+  margin: 6px 0;
+  padding: 4px 8px;
+  color: var(--accent);
+  font-weight: 700;
+  background: rgba(212, 175, 55, 0.1);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
 }

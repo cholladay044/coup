@@ -1,6 +1,6 @@
 export const CHARACTER_INFO = {
   Duke: { color: '#7b3fe4', ability: 'Take 3 coins (Tax). Blocks Foreign Aid.', action: 'Tax: +3' },
-  Assassin: { color: '#2b2b2b', ability: 'Pay 3 coins to assassinate another player.', action: 'Kill: 3 coins' },
+  Assassin: { color: '#5b5b66', ability: 'Pay 3 coins to assassinate another player.', action: 'Kill: 3 coins' },
   Captain: { color: '#2b7de1', ability: 'Steal 2 coins from another player. Blocks stealing.', action: 'Steal: 2' },
   Ambassador: { color: '#2ea043', ability: 'Exchange cards with the court deck. Blocks stealing.', action: 'Exchange' },
   Contessa: { color: '#d1293d', ability: 'Blocks assassination.', action: 'Blocks Kill' },

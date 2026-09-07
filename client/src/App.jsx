@@ -3,6 +3,7 @@ import { socket, emitAsync } from './socket';
 import Home from './components/Home';
 import Lobby from './components/Lobby';
 import GameBoard from './components/GameBoard';
+import RulesModal from './components/RulesModal';
 import './App.css';
 
 export default function App() {
@@ -108,16 +109,13 @@ export default function App() {
   const onChooseLoss = useCallback((cardId) => gameAction('game:chooseLoss')({ cardId }), [gameAction]);
   const onExchangeSelect = useCallback((keepCardIds) => gameAction('game:exchangeSelect')({ keepCardIds }), [gameAction]);
 
+  let content;
   if (screen === 'home' || !playerId) {
-    return <Home onCreate={handleCreate} onJoin={handleJoin} error={error} />;
-  }
-
-  if (screen === 'lobby' && lobby) {
-    return <Lobby lobby={lobby} playerId={playerId} onStart={handleStart} error={error} />;
-  }
-
-  if (screen === 'game' && gameState) {
-    return (
+    content = <Home onCreate={handleCreate} onJoin={handleJoin} error={error} />;
+  } else if (screen === 'lobby' && lobby) {
+    content = <Lobby lobby={lobby} playerId={playerId} onStart={handleStart} error={error} />;
+  } else if (screen === 'game' && gameState) {
+    content = (
       <GameBoard
         gameState={gameState}
         playerId={playerId}
@@ -130,7 +128,14 @@ export default function App() {
         onBackToHome={handleBackToHome}
       />
     );
+  } else {
+    content = <div className="screen">Connecting…</div>;
   }
 
-  return <div className="screen">Connecting…</div>;
+  return (
+    <>
+      {content}
+      <RulesModal />
+    </>
+  );
 }
