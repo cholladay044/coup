@@ -49,3 +49,20 @@ Open `http://localhost:5173` in multiple browser tabs/devices to play. One playe
 ## Notes
 
 Game state lives in server memory only — restarting the server clears all rooms. There's no persistence/database, matching the scope of a casual party game.
+
+## Deploying
+
+The server and client deploy as two separate services.
+
+**Server (Render):**
+1. On [render.com](https://render.com), sign in with GitHub, click **New +** → **Blueprint**, and pick this repo. Render reads `render.yaml` and creates the `coup-server` web service (free plan) automatically.
+2. Once created, set the `CLIENT_ORIGIN` env var on the service to your deployed client URL (e.g. `https://coup.vercel.app`) — do this after the client is deployed in step below, then trigger a redeploy.
+3. Note the server's public URL, e.g. `https://coup-server.onrender.com`.
+
+**Client (Vercel):**
+1. On [vercel.com](https://vercel.com), sign in with GitHub, **Add New** → **Project**, and pick this repo.
+2. Set **Root Directory** to `client`. Vercel auto-detects the Vite framework preset.
+3. Add an environment variable `VITE_SERVER_URL` set to your Render server URL from above.
+4. Deploy. Once live, go back and set the server's `CLIENT_ORIGIN` (step 2 above) to this Vercel URL and redeploy the server.
+
+Render's free plan spins the server down after inactivity — the first request after idling will be slow to wake it up, and any in-progress rooms/games are lost on restart (see Notes above).
