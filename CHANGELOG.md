@@ -11,6 +11,46 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), and vers
 
 Committed to `master` but **not yet deployed** to production.
 
+## [1.2.0] - 2026-09-07
+
+Deployed to Render (`coup-server`) and Vercel (`coup`, alias `coup-canopy.vercel.app`).
+First release to include server-side changes.
+
+### Added
+- Games now resolve when players leave instead of stalling. If everyone but one player has
+  disconnected, that player wins by default after a grace period, and the remaining player
+  sees a live countdown banner naming who they're waiting on.
+- "Give them more time" button on that banner, adding 60s per press for a player known to be
+  reconnecting. Capped at 5 minutes total from the disconnect so an abandoned room still
+  terminates; the button disables at the cap and the server independently rejects extending
+  past it. Only the player who would win can extend, so it can only delay their own win.
+- Disconnects and reconnects are now reported in the activity log as they happen, styled as
+  neutral system notices (⚠ / ↩) distinct from the gameplay colours.
+- Tab title changes to "Your turn! — Coup" whenever the game is waiting on you specifically —
+  your turn, an unanswered challenge/block window, choosing a card to lose, or an exchange.
+- Icons alongside the colour-coded log entries (▶ turn, ⚔ challenge, ✕ bluff caught,
+  ✓ claim genuine) so the log is scannable without relying on colour alone.
+- Playwright regression suites for min (2), mid (4) and max (6) player counts, each with its
+  own directory, notes and screenshots under `playwright tests/`.
+
+### Changed
+- Narrow screens (≤980px) now put the activity log above the board and the action panel
+  below the player's own cards, so the controls sit within thumb reach; the log is capped at
+  160px with its own scrollbar and centred at up to 480px wide instead of stretching.
+
+### Fixed
+- A disconnected player could stall a game indefinitely: the server never propagated
+  connection state into the running `Game`, so the "Disconnected" badge was inaccurate
+  mid-game and nothing ever resolved around an absent player. Pending challenge/block
+  windows, card-loss choices and exchanges belonging to a disconnected player are now
+  auto-resolved, and their turns are skipped.
+- Refreshing as the last remaining player permanently cancelled the forfeit countdown,
+  leaving a game that could never end. Whether a countdown should run is now re-evaluated on
+  disconnect, on rejoin, and after game actions.
+- Eliminating the last *connected* opponent while another player was already disconnected hit
+  the same permanent stall, and now starts a countdown.
+- Page title was the Vite placeholder "client".
+
 ## [1.1.0] - 2026-09-07
 
 Deployed to Render (`coup-server`) and Vercel (`coup`, alias `coup-canopy.vercel.app`).
@@ -54,6 +94,7 @@ Initial public release. Deployed to Render (`coup-server`) and Vercel (`coup`).
 - Player name/"(you)" tag overlapping the cards below it when a card is in its "claimed" glow
   state.
 
-[Unreleased]: https://github.com/cholladay044/coup/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/cholladay044/coup/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/cholladay044/coup/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/cholladay044/coup/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/cholladay044/coup/releases/tag/v1.0.0

@@ -29,6 +29,12 @@ export class Game {
     this.winnerId = null;
     this.pendingAction = null;
     this.pendingLoss = null;
+    // Epoch ms at which the last player standing wins by default, or null when no such
+    // countdown is running. `forfeitCapAt` is the furthest that deadline can ever be
+    // pushed out to, so granting more time can't keep an abandoned room alive forever.
+    // Both are set by the server layer, which owns the actual timer.
+    this.forfeitDeadline = null;
+    this.forfeitCapAt = null;
     this.log = [];
 
     this._pushLog(`Game started with ${this.players.length} players.`);
@@ -460,6 +466,139 @@ export class Game {
     this.endTurn();
   }
 
+  // ---------- disconnect handling ----------
+  //
+  // A disconnected player can otherwise stall the game forever: they might be the only
+  // eligible responder in a challenge/block window, the one who needs to choose a card to
+  // lose, the one exchanging cards, or simply the current player who never declares an
+  // action. `setConnected` records the flag and `settleDisconnected` auto-resolves whatever
+  // is currently blocked on a disconnected player, cascading through as many follow-on
+  // states as necessary (bounded so a room where everyone has left can't loop forever).
+
+  setConnected(playerId, connected) {
+    const player = this.getPlayer(playerId);
+    if (!player) return;
+    const wasConnected = player.connected;
+    player.connected = connected;
+    if (this.phase !== 'playing' || wasConnected === connected) return;
+
+    if (!connected) {
+      this._pushLog(`${player.name} disconnected.`);
+      this.settleDisconnected();
+      return;
+    }
+
+    if (!this.pendingAction && !this.pendingLoss && !this.isEliminated(player)) {
+      const current = this.getPlayer(this.currentPlayerId);
+      if (current && !current.connected) {
+        // Nobody could act because the current player was disconnected (e.g. everyone
+        // else had also disconnected at the time). Hand the turn to whoever just
+        // reconnected instead of leaving the game stuck.
+        const idx = this.turnOrder.indexOf(playerId);
+        if (idx !== -1) {
+          this.turnIndex = idx;
+          this._pushLog(`${player.name} reconnected — it's now their turn.`);
+          return;
+        }
+      }
+    }
+    this._pushLog(`${player.name} reconnected.`);
+  }
+
+  // The id of the only player left who is both still in the game and still connected, or
+  // null if more than one (or nobody) is around. Note this counts *connected* players, not
+  // just non-eliminated ones: a player who left is still "active" until eliminated.
+  lastPlayerStandingId() {
+    if (this.phase !== 'playing') return null;
+    const active = this.activePlayers();
+    if (active.length <= 1) return null;
+    const stillHere = active.filter((p) => p.connected);
+    return stillHere.length === 1 ? stillHere[0].id : null;
+  }
+
+  // Ends the game in favour of the last player still connected. The caller decides *when*
+  // to do this (see the forfeit grace period in index.js) so a page refresh, which is a
+  // disconnect immediately followed by a rejoin, doesn't hand away the game.
+  setForfeitState(deadline, capAt = null) {
+    this.forfeitDeadline = deadline;
+    this.forfeitCapAt = deadline === null ? null : capAt;
+  }
+
+  // False once the deadline has been pushed out as far as the cap allows, so the UI can
+  // disable the button rather than offering a press that would do nothing.
+  canExtendForfeit() {
+    if (this.phase !== 'playing' || !this.forfeitDeadline || !this.forfeitCapAt) return false;
+    return this.forfeitDeadline < this.forfeitCapAt - 1000;
+  }
+
+  endByForfeit(winnerId) {
+    if (this.phase !== 'playing') return;
+    const winner = this.getPlayer(winnerId);
+    if (!winner) return;
+    const absent = this.activePlayers().filter((p) => !p.connected);
+    this.phase = 'ended';
+    this.winnerId = winner.id;
+    this.pendingAction = null;
+    this.pendingLoss = null;
+    this.forfeitDeadline = null;
+    this.forfeitCapAt = null;
+    const who = absent.length === 1 ? absent[0].name : `${absent.length} players`;
+    this._pushLog(`${who} left the game — ${winner.name} wins by default.`);
+  }
+
+  settleDisconnected() {
+    for (let guard = 0; guard < 50; guard++) {
+      if (this.phase !== 'playing') return;
+
+      if (this.pendingLoss) {
+        const player = this.getPlayer(this.pendingLoss.playerId);
+        if (player && !player.connected) {
+          const unrevealed = player.cards.filter((c) => !c.revealed);
+          if (unrevealed.length > 0) {
+            this.chooseLoss(player.id, unrevealed[0].id);
+            continue;
+          }
+        }
+        return; // waiting on a connected player
+      }
+
+      const pa = this.pendingAction;
+      if (pa) {
+        if (pa.phase === 'exchange-selection') {
+          const actor = this.getPlayer(pa.actorId);
+          if (actor && !actor.connected) {
+            const keep = pa.exchangePool.slice(0, pa.exchangeKeepCount).map((c) => c.id);
+            this.exchangeSelect(actor.id, keep);
+            continue;
+          }
+          return;
+        }
+
+        let eligible = [];
+        if (pa.phase === 'action-challenge') eligible = this._eligibleChallengers();
+        else if (pa.phase === 'block-window') eligible = this._eligibleBlockers();
+        else if (pa.phase === 'block-challenge') {
+          eligible = this.activePlayers().filter((p) => p.id !== pa.blockerId).map((p) => p.id);
+        }
+
+        const next = eligible.find((id) => !pa.responded.has(id) && !this.getPlayer(id)?.connected);
+        if (next) {
+          this.pass(next);
+          continue;
+        }
+        return; // waiting on connected players
+      }
+
+      const current = this.getPlayer(this.currentPlayerId);
+      if (current && !current.connected) {
+        this._pushLog(`${current.name} is disconnected — turn skipped.`);
+        this.endTurn();
+        continue;
+      }
+      return;
+    }
+  }
+
   // ---------- serialization for clients ----------
 
   getPublicState(forPlayerId) {
@@ -495,6 +634,13 @@ export class Game {
       winnerId: this.winnerId,
       currentPlayerId: this.phase === 'playing' ? this.currentPlayerId : null,
       deckCount: this.deck.length,
+      // Time left for absent players to reconnect before the last player standing wins.
+      // Sent as a duration rather than a timestamp so client clock skew can't skew it.
+      forfeitInMs:
+        this.phase === 'playing' && this.forfeitDeadline
+          ? Math.max(0, this.forfeitDeadline - Date.now())
+          : null,
+      forfeitExtendable: this.canExtendForfeit(),
       players: this.players.map((p) => ({
         id: p.id,
         name: p.name,

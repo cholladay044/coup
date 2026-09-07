@@ -6,6 +6,20 @@ import GameBoard from './components/GameBoard';
 import RulesModal from './components/RulesModal';
 import './App.css';
 
+// True when the game is waiting on this specific player to do something: it's their turn
+// with no action declared yet, they're an un-responded eligible challenger/blocker, they
+// need to choose a card to lose, or they're the one exchanging cards.
+function playerNeedsAttention(gameState, playerId) {
+  if (!gameState || gameState.phase !== 'playing' || !playerId) return false;
+  if (gameState.pendingLoss) return gameState.pendingLoss.playerId === playerId;
+  const pa = gameState.pendingAction;
+  if (pa) {
+    if (pa.phase === 'exchange-selection') return pa.actorId === playerId;
+    return pa.eligibleResponderIds.includes(playerId) && !pa.respondedIds.includes(playerId);
+  }
+  return gameState.currentPlayerId === playerId;
+}
+
 export default function App() {
   const [screen, setScreen] = useState('home');
   const [playerId, setPlayerId] = useState(null);
@@ -30,6 +44,12 @@ export default function App() {
       socket.off('game:state', onGameState);
     };
   }, []);
+
+  // Nudge the tab title when it's this player's turn to act or respond, so it's noticeable
+  // while alt-tabbed (most of a multiplayer game is spent waiting on other players).
+  useEffect(() => {
+    document.title = screen === 'game' && playerNeedsAttention(gameState, playerId) ? 'Your turn! — Coup' : 'Coup';
+  }, [gameState, playerId, screen]);
 
   // attempt to rejoin an in-progress session after a refresh
   useEffect(() => {
@@ -102,6 +122,16 @@ export default function App() {
     }
   }, []);
 
+  // Racing the timer expiring is the only realistic failure here, and the broadcast state
+  // is the source of truth either way — so no alert, unlike the other game actions.
+  const onExtendForfeit = useCallback(async () => {
+    try {
+      await emitAsync('game:extendForfeit', {});
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const onDeclare = useCallback((type, targetId) => gameAction('game:action')({ type, targetId }), [gameAction]);
   const onPass = useCallback(() => gameAction('game:pass')({}), [gameAction]);
   const onChallenge = useCallback(() => gameAction('game:challenge')({}), [gameAction]);
@@ -125,6 +155,7 @@ export default function App() {
         onBlock={onBlock}
         onChooseLoss={onChooseLoss}
         onExchangeSelect={onExchangeSelect}
+        onExtendForfeit={onExtendForfeit}
         onBackToHome={handleBackToHome}
       />
     );

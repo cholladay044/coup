@@ -37,7 +37,7 @@ the Viewer's browser renders a genuine 6-player board. We then screenshot the re
 
 ## Script
 
-Save as `playwright tests/max_players_test.cjs`:
+Save as `playwright tests/max_players/max_players_test.cjs`:
 
 ```js
 const { chromium } = require('playwright-core');
@@ -77,7 +77,7 @@ async function main() {
   await page.waitForSelector('.game-screen', { timeout: 10000 });
   await page.waitForTimeout(1000);
 
-  await page.screenshot({ path: 'playwright tests/max_players_screenshot.png', fullPage: true });
+  await page.screenshot({ path: 'playwright tests/max_players/max_players_screenshot.png', fullPage: true });
   console.log('screenshot saved');
 
   for (const s of bots) s.disconnect();
@@ -92,10 +92,10 @@ main().catch((e) => { console.error(e); process.exit(1); });
 Run from the **repo root** (the script's screenshot path is relative to it):
 
 ```bash
-node "playwright tests/max_players_test.cjs"
+node "playwright tests/max_players/max_players_test.cjs"
 ```
 
-Screenshot is written to `playwright tests/max_players_screenshot.png`.
+Screenshot is written to `playwright tests/max_players/max_players_screenshot.png`.
 
 ## What to check in the screenshot
 
@@ -146,5 +146,24 @@ but confusing for screenshot-based review, so plain `min-height` was kept instea
 test after the fix at both viewports to confirm — screenshots now show a consistent gradient with
 no seam.
 
+**Mobile-friendly panel order (narrow only):** the `board-layout` responsive breakpoint (980px)
+now stacks the log panel *above* the board and the action panel *below* the self-row — swapped
+from the desktop order (action-rail, board-center, log-panel) so the flow reads: glance at recent
+history, see the board, act near your own cards. Implemented with flex `order` inside the
+existing narrow media query, so desktop is unaffected. This also required extra `.screen`
+bottom padding on narrow widths, since the action panel is now last and would otherwise collide
+with the fixed help button — verified no overlap by scrolling to the true bottom and re-measuring
+bounding boxes (a `fullPage` screenshot alone is misleading for `position: fixed` elements; see
+the background-seam note above for the same class of artifact).
+
+**Log panel centering (narrow only):** the log panel is capped with `max-width: 480px` and
+centered with `margin: 0 auto` instead of stretching full-width (see `min_players_test.md` for
+the two false starts — an `align-self`/`width: 100%` interaction that under-sized it to ~300px,
+then a CSS source-order pitfall, the same class of bug as the `.log-feed` `max-height` issue
+documented above). Confirmed it renders at the full 480px, centered, populated with real data at
+6 players.
+
 **Conclusion:** Formatting itself needs no changes at max players. One real background-sizing bug
-was found and fixed via this test (see above).
+was found and fixed via this test (see above), plus a narrow-screen panel reorder for mobile
+friendliness with a follow-up padding fix to keep the help button clear of the action panel, and
+a follow-up log-panel centering fix.

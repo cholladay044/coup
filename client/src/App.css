@@ -367,12 +367,25 @@ button.danger {
     align-items: stretch;
   }
 
-  .action-rail {
-    width: 100%;
+  /* Put the log up top (glanceable history) and the action panel down by the
+     self-row/action buttons (closest to what you're actually doing next). */
+  .log-panel {
+    order: 1;
   }
 
-  .log-panel {
+  .board-center {
+    order: 2;
+  }
+
+  .action-rail {
     width: 100%;
+    order: 3;
+  }
+
+  /* The action panel now ends up last/lowest, right where the fixed help
+     button sits — give the page extra bottom clearance so they don't overlap. */
+  .screen {
+    padding-bottom: 88px;
   }
 }
 
@@ -601,6 +614,14 @@ button.danger {
   padding: 10px 12px;
 }
 
+@media (max-width: 980px) {
+  .log-panel {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+}
+
 .log-title {
   margin: 0 0 6px;
   font-size: 0.7rem;
@@ -634,4 +655,90 @@ button.danger {
   background: rgba(212, 175, 55, 0.1);
   border-left: 3px solid var(--accent);
   border-radius: 4px;
+}
+
+/* A challenge is in-flight: declared, then resolved as either a caught bluff
+   (succeeded, red) or a proven-genuine claim (failed, green). */
+.log-entry-challenge {
+  margin: 6px 0;
+  padding: 4px 8px;
+  font-weight: 700;
+  border-radius: 4px;
+  color: #d4823a;
+  background: rgba(212, 130, 58, 0.1);
+  border-left: 3px solid #d4823a;
+}
+
+.log-entry-challenge-succeeded {
+  color: var(--danger);
+  background: rgba(192, 57, 43, 0.12);
+  border-left-color: var(--danger);
+}
+
+.log-entry-challenge-failed {
+  color: #2ea043;
+  background: rgba(46, 160, 67, 0.12);
+  border-left-color: #2ea043;
+}
+
+.forfeit-notice {
+  width: 100%;
+  max-width: 1400px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--danger-dim);
+  border-left: 4px solid var(--danger);
+  border-radius: 10px;
+  background: rgba(192, 57, 43, 0.12);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.forfeit-notice-icon {
+  color: var(--danger);
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.forfeit-countdown {
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.forfeit-notice-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.forfeit-notice-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.forfeit-extend {
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: center;
+}
+
+/* Connection/system notices: visible, but deliberately neutral so they don't compete with
+   the gameplay colours (gold turns, orange/red/green challenges). */
+.log-entry-system {
+  margin: 6px 0;
+  padding: 4px 8px;
+  color: var(--text);
+  background: rgba(91, 91, 102, 0.25);
+  border-left: 3px solid #5b5b66;
+  border-radius: 4px;
+}
+
+.log-entry-icon {
+  display: inline-block;
+  width: 1.1em;
+  margin-right: 4px;
+  text-align: center;
 }

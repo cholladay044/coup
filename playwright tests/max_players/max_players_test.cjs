@@ -34,7 +34,7 @@ async function main() {
   await page.waitForSelector('.game-screen', { timeout: 10000 });
   await page.waitForTimeout(1000);
 
-  await page.screenshot({ path: 'playwright tests/max_players_screenshot.png', fullPage: true });
+  await page.screenshot({ path: 'playwright tests/max_players/max_players_screenshot.png', fullPage: true });
   console.log('screenshot saved');
 
   for (const s of bots) s.disconnect();

@@ -5,10 +5,11 @@ import ResponsePanel from './ResponsePanel';
 import LossModal from './LossModal';
 import ExchangeModal from './ExchangeModal';
 import LogFeed from './LogFeed';
+import ForfeitNotice from './ForfeitNotice';
 
 const FORCED_COUP_COINS = 10;
 
-export default function GameBoard({ gameState, playerId, onDeclare, onPass, onChallenge, onBlock, onChooseLoss, onExchangeSelect, onBackToHome }) {
+export default function GameBoard({ gameState, playerId, onDeclare, onPass, onChallenge, onBlock, onChooseLoss, onExchangeSelect, onExtendForfeit, onBackToHome }) {
   const [previewClaim, setPreviewClaim] = useState(null);
   const playersById = Object.fromEntries(gameState.players.map((p) => [p.id, p]));
   const myPlayer = playersById[playerId];
@@ -16,6 +17,7 @@ export default function GameBoard({ gameState, playerId, onDeclare, onPass, onCh
   const targetableOpponents = others.filter((p) => !p.eliminated);
   const isMyTurn = gameState.currentPlayerId === playerId;
   const pa = gameState.pendingAction;
+  const absentNames = gameState.players.filter((p) => !p.connected && !p.eliminated).map((p) => p.name);
 
   return (
     <div className="screen game-screen">
@@ -29,6 +31,14 @@ export default function GameBoard({ gameState, playerId, onDeclare, onPass, onCh
           </div>
         </div>
       )}
+
+      <ForfeitNotice
+        key={gameState.forfeitInMs ?? 'none'}
+        forfeitInMs={gameState.forfeitInMs}
+        absentNames={absentNames}
+        canExtend={gameState.forfeitExtendable}
+        onExtend={onExtendForfeit}
+      />
 
       <div className="board-layout">
         <div className="action-rail">
