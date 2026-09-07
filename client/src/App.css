@@ -220,7 +220,7 @@ button.danger {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
   font-weight: 600;
 }
 
