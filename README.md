@@ -2,6 +2,8 @@
 
 A web-based implementation of the card game **Coup**, following the standard 15-card ruleset (Duke, Assassin, Captain, Ambassador, Contessa).
 
+**Play now:** https://coup-canopy.vercel.app
+
 ## Stack
 
 - **Server**: Node.js, Express, Socket.io — authoritative game state, hides opponents' cards from each client.
