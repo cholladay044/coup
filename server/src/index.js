@@ -46,7 +46,13 @@ function broadcastGame(room) {
   if (!room.game) return;
   for (const player of room.players.values()) {
     if (player.socketId) {
-      io.to(player.socketId).emit('game:state', room.game.getPublicState(player.id));
+      // `hostId` is a room concept, not a game one, so it is merged in here rather than
+      // threaded through Game. The end-of-game screen needs it to decide who may take
+      // everyone back to the lobby.
+      io.to(player.socketId).emit('game:state', {
+        ...room.game.getPublicState(player.id),
+        hostId: room.hostId,
+      });
     }
   }
 }
@@ -151,6 +157,113 @@ io.on('connection', (socket) => {
       broadcastLobby(room);
     } catch (err) {
       cb({ ok: false, error: err.message });
+    }
+  });
+
+  // "Don't wait for them." Only reachable by the one player still connected while the
+  // forfeit countdown is running: it awards them the win immediately, drops the players who
+  // never came back, and lands them in the lobby — instead of sitting out the countdown for
+  // opponents who have plainly gone.
+  socket.on('room:kickAbsentAndReturn', (_payload, cb) => {
+    try {
+      const { roomCode, playerId } = socket.data;
+      const room = roomManager.getRoom(roomCode);
+      if (!room || !room.players.has(playerId)) throw new Error('You are not in this room.');
+      if (!room.game) throw new Error('There is no game to end.');
+      if (room.game.lastPlayerStandingId() !== playerId) {
+        throw new Error('There is nobody to drop right now.');
+      }
+
+      room.game.endByForfeit(playerId);
+      for (const [id, player] of [...room.players]) {
+        if (!player.connected) room.players.delete(id);
+      }
+      if (!room.players.has(room.hostId)) roomManager.reassignHost(room);
+
+      cancelForfeit(room);
+      room.game = null;
+
+      cb?.({ ok: true });
+      broadcastLobby(room);
+    } catch (err) {
+      cb?.({ ok: false, error: err.message });
+    }
+  });
+
+  // Ends the session and puts everyone back in the lobby they played from, ready to start
+  // again. Triggered by the lead; if the lead is not around to do it, any connected player
+  // can, so a finished game can't strand everyone on the end screen.
+  socket.on('room:returnToLobby', (_payload, cb) => {
+    try {
+      const { roomCode, playerId } = socket.data;
+      const room = roomManager.getRoom(roomCode);
+      if (!room || !room.players.has(playerId)) throw new Error('You are not in this room.');
+      if (!room.game) {
+        // Someone else already took us back — nothing to do.
+        cb?.({ ok: true });
+        return;
+      }
+      if (room.game.phase !== 'ended') throw new Error('The game is still in progress.');
+
+      const host = room.players.get(room.hostId);
+      if (room.hostId !== playerId && host && host.connected) {
+        throw new Error('Only the lead can return everyone to the lobby.');
+      }
+
+      // Anyone who never came back is dropped, so the lobby roster reflects who is
+      // actually here and ready to play again.
+      for (const [id, player] of [...room.players]) {
+        if (!player.connected) room.players.delete(id);
+      }
+      if (!room.players.has(room.hostId)) roomManager.reassignHost(room);
+
+      cancelForfeit(room);
+      room.game = null;
+
+      cb?.({ ok: true });
+      if (room.players.size === 0) {
+        roomManager.removePlayer(room.code, playerId); // deletes the now-empty room
+        return;
+      }
+      broadcastLobby(room);
+    } catch (err) {
+      cb?.({ ok: false, error: err.message });
+    }
+  });
+
+  // Explicitly leaving. In a lobby this is permanent — the player is dropped from the
+  // roster and the lead moves on if it was theirs. Mid-game it is treated as a disconnect
+  // instead, so the seat is held and they can rejoin while the session is still alive.
+  socket.on('room:leave', (_payload, cb) => {
+    try {
+      const { roomCode, playerId } = socket.data;
+      const room = roomManager.getRoom(roomCode);
+      if (!room || !room.players.has(playerId)) {
+        // Already gone (double click, or the room was cleaned up) — nothing to undo.
+        cb?.({ ok: true, removed: false });
+        return;
+      }
+
+      const midGame = !!room.game && room.game.phase === 'playing';
+      socket.data.roomCode = null;
+      socket.data.playerId = null;
+      socket.leave(room.code);
+
+      if (midGame) {
+        room.players.get(playerId).connected = false;
+        room.game.setConnected(playerId, false);
+        refreshForfeitTimer(room);
+        cb?.({ ok: true, removed: false, canRejoin: true });
+        broadcastGame(room);
+        return;
+      }
+
+      roomManager.removePlayer(room.code, playerId);
+      cb?.({ ok: true, removed: true });
+      // The room is deleted once the last player leaves, so only broadcast if it survives.
+      if (roomManager.getRoom(room.code)) broadcastRoom(room);
+    } catch (err) {
+      cb?.({ ok: false, error: err.message });
     }
   });
 

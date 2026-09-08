@@ -23,7 +23,6 @@ function playerNeedsAttention(gameState, playerId) {
 export default function App() {
   const [screen, setScreen] = useState('home');
   const [playerId, setPlayerId] = useState(null);
-  const [roomCode, setRoomCode] = useState(null);
   const [lobby, setLobby] = useState(null);
   const [gameState, setGameState] = useState(null);
   const [error, setError] = useState('');
@@ -32,6 +31,9 @@ export default function App() {
     function onLobbyState(state) {
       setLobby(state);
       setScreen('lobby');
+      // Lobby state is only ever broadcast when no game is running, so anything we were
+      // holding from a finished session is stale — drop it rather than let it flash back.
+      setGameState(null);
     }
     function onGameState(state) {
       setGameState(state);
@@ -58,7 +60,6 @@ export default function App() {
     const { roomCode: code, playerId: pid } = JSON.parse(saved);
     emitAsync('room:rejoin', { code, playerId: pid })
       .then(() => {
-        setRoomCode(code);
         setPlayerId(pid);
       })
       .catch(() => localStorage.removeItem('coup:session'));
@@ -74,17 +75,49 @@ export default function App() {
     socket.connect();
     setScreen('home');
     setPlayerId(null);
-    setRoomCode(null);
     setLobby(null);
     setGameState(null);
     setError('');
   }, []);
 
+  // Skips the rest of the reconnect countdown: takes the win, drops the players who never
+  // came back, and returns to the lobby. The lobby:state broadcast moves the screen.
+  const handleKickAbsent = useCallback(async () => {
+    setError('');
+    try {
+      await emitAsync('room:kickAbsentAndReturn', {});
+    } catch (err) {
+      setError(err.message);
+    }
+  }, []);
+
+  // Ends the session for everyone and puts the room back in its lobby. The resulting
+  // lobby:state broadcast is what moves each client's screen, so there is nothing to set
+  // locally here.
+  const handleReturnToLobby = useCallback(async () => {
+    setError('');
+    try {
+      await emitAsync('room:returnToLobby', {});
+    } catch (err) {
+      setError(err.message);
+    }
+  }, []);
+
+  // Leaving a lobby for good: tell the server first so the other players' rosters update,
+  // then drop the saved session so a refresh doesn't pull us back in.
+  const handleLeaveLobby = useCallback(async () => {
+    try {
+      await emitAsync('room:leave', {});
+    } catch {
+      /* leaving is best-effort — reset locally either way */
+    }
+    handleBackToHome();
+  }, [handleBackToHome]);
+
   const handleCreate = useCallback(async (name) => {
     setError('');
     try {
       const res = await emitAsync('room:create', { name });
-      setRoomCode(res.roomCode);
       setPlayerId(res.playerId);
       saveSession(res.roomCode, res.playerId);
     } catch (err) {
@@ -96,7 +129,6 @@ export default function App() {
     setError('');
     try {
       const res = await emitAsync('room:join', { code, name });
-      setRoomCode(res.roomCode);
       setPlayerId(res.playerId);
       saveSession(res.roomCode, res.playerId);
     } catch (err) {
@@ -143,7 +175,15 @@ export default function App() {
   if (screen === 'home' || !playerId) {
     content = <Home onCreate={handleCreate} onJoin={handleJoin} error={error} />;
   } else if (screen === 'lobby' && lobby) {
-    content = <Lobby lobby={lobby} playerId={playerId} onStart={handleStart} error={error} />;
+    content = (
+      <Lobby
+        lobby={lobby}
+        playerId={playerId}
+        onStart={handleStart}
+        onLeave={handleLeaveLobby}
+        error={error}
+      />
+    );
   } else if (screen === 'game' && gameState) {
     content = (
       <GameBoard
@@ -156,7 +196,9 @@ export default function App() {
         onChooseLoss={onChooseLoss}
         onExchangeSelect={onExchangeSelect}
         onExtendForfeit={onExtendForfeit}
-        onBackToHome={handleBackToHome}
+        onKickAbsent={handleKickAbsent}
+        onReturnToLobby={handleReturnToLobby}
+        onLeaveLobby={handleLeaveLobby}
       />
     );
   } else {

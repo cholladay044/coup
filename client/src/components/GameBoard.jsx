@@ -9,8 +9,9 @@ import ForfeitNotice from './ForfeitNotice';
 
 const FORCED_COUP_COINS = 10;
 
-export default function GameBoard({ gameState, playerId, onDeclare, onPass, onChallenge, onBlock, onChooseLoss, onExchangeSelect, onExtendForfeit, onBackToHome }) {
+export default function GameBoard({ gameState, playerId, onDeclare, onPass, onChallenge, onBlock, onChooseLoss, onExchangeSelect, onExtendForfeit, onKickAbsent, onReturnToLobby, onLeaveLobby }) {
   const [previewClaim, setPreviewClaim] = useState(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const playersById = Object.fromEntries(gameState.players.map((p) => [p.id, p]));
   const myPlayer = playersById[playerId];
   const others = gameState.players.filter((p) => p.id !== playerId);
@@ -19,15 +20,50 @@ export default function GameBoard({ gameState, playerId, onDeclare, onPass, onCh
   const pa = gameState.pendingAction;
   const absentNames = gameState.players.filter((p) => !p.connected && !p.eliminated).map((p) => p.name);
 
+  // The lead takes everyone back to the lobby. If the lead isn't around to do it, any
+  // connected player can, so a finished game can't strand people on the end screen.
+  const lead = playersById[gameState.hostId];
+  const leadName = lead?.name ?? 'the lead';
+  const canReturnToLobby = gameState.hostId === playerId || !lead || !lead.connected;
+
   return (
     <div className="screen game-screen">
       {gameState.phase === 'ended' && (
         <div className="modal-overlay">
           <div className="modal">
-            <h2>{playersById[gameState.winnerId]?.name || 'A player'} wins!</h2>
-            <button className="primary" onClick={onBackToHome}>
-              Back to Home
-            </button>
+            {confirmLeave ? (
+              <>
+                <h3>Leave this lobby?</h3>
+                <p className="waiting-text">
+                  You'll go back to the home screen and be removed from the lobby. You would
+                  need the room code to get back in.
+                </p>
+                <div className="response-buttons">
+                  <button className="danger" onClick={onLeaveLobby}>
+                    Leave Lobby
+                  </button>
+                  <button className="secondary" onClick={() => setConfirmLeave(false)}>
+                    Stay
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>{playersById[gameState.winnerId]?.name || 'A player'} wins!</h2>
+                {canReturnToLobby ? (
+                  <button className="primary" onClick={onReturnToLobby}>
+                    Back to Lobby
+                  </button>
+                ) : (
+                  <p className="waiting-text">
+                    Waiting for {leadName} to take everyone back to the lobby…
+                  </p>
+                )}
+                <button className="secondary end-leave" onClick={() => setConfirmLeave(true)}>
+                  Back to Home
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -38,6 +74,7 @@ export default function GameBoard({ gameState, playerId, onDeclare, onPass, onCh
         absentNames={absentNames}
         canExtend={gameState.forfeitExtendable}
         onExtend={onExtendForfeit}
+        onKickAbsent={onKickAbsent}
       />
 
       <div className="board-layout">

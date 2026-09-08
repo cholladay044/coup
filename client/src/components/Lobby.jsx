@@ -1,4 +1,4 @@
-export default function Lobby({ lobby, playerId, onStart, error }) {
+export default function Lobby({ lobby, playerId, onStart, onLeave, error }) {
   const isHost = lobby.hostId === playerId;
   const canStart = lobby.players.length >= 2;
 
@@ -31,6 +31,10 @@ export default function Lobby({ lobby, playerId, onStart, error }) {
       ) : (
         <p className="waiting-text">Waiting for the host to start the game…</p>
       )}
+
+      <button className="secondary lobby-leave" onClick={onLeave}>
+        Leave Lobby
+      </button>
     </div>
   );
 }

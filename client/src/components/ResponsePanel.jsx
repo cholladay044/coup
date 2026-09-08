@@ -4,8 +4,17 @@ export default function ResponsePanel({ pendingAction, playersById, playerId, on
   const pa = pendingAction;
   const actor = playersById[pa.actorId];
   const target = pa.targetId ? playersById[pa.targetId] : null;
-  const iAmEligible = pa.eligibleResponderIds.includes(playerId) && !pa.respondedIds.includes(playerId);
-  const waitingOn = pa.eligibleResponderIds.filter((id) => !pa.respondedIds.includes(id)).map((id) => playersById[id]?.name);
+  // Eliminated players are out of the game and must never be asked to act. The server
+  // already leaves them out of `eligibleResponderIds`, so this is defence in depth rather
+  // than something reachable today — but it keeps the panel honest on its own terms
+  // instead of trusting the server completely.
+  const me = playersById[playerId];
+  const stillInPlay = (id) => !playersById[id]?.eliminated;
+  const iAmEligible =
+    !me?.eliminated && pa.eligibleResponderIds.includes(playerId) && !pa.respondedIds.includes(playerId);
+  const waitingOn = pa.eligibleResponderIds
+    .filter((id) => !pa.respondedIds.includes(id) && stillInPlay(id))
+    .map((id) => playersById[id]?.name);
 
   if (pa.phase === 'exchange-selection') {
     return (

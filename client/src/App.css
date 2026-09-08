@@ -143,6 +143,21 @@ button.danger {
   opacity: 0.5;
 }
 
+/* Sits under "Back to Lobby" on the end screen — an escape hatch, not the main path. */
+.end-leave {
+  display: block;
+  margin: 10px auto 0;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+}
+
+/* Secondary to the start button — leaving shouldn't compete with the primary action. */
+.lobby-leave {
+  margin-top: 4px;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+}
+
 .badge {
   font-size: 0.7rem;
   background: var(--panel-light);
@@ -719,10 +734,19 @@ button.danger {
   color: var(--text-dim);
 }
 
-.forfeit-extend {
+.forfeit-actions {
   flex-shrink: 0;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   align-self: center;
+}
+
+.forfeit-extend,
+.forfeit-kick {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  padding: 8px 14px;
 }
 
 /* Connection/system notices: visible, but deliberately neutral so they don't compete with

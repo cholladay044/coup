@@ -246,7 +246,10 @@ export class Game {
       return this.activePlayers().filter((p) => p.id !== actorId).map((p) => p.id);
     }
     if (type === 'assassinate' || type === 'steal') {
-      return targetId ? [targetId] : [];
+      // The target can be eliminated after the action was declared — e.g. they challenged
+      // the assassin and lost their last influence. Never open a window on a dead player.
+      const target = targetId ? this.getPlayer(targetId) : null;
+      return target && !this.isEliminated(target) ? [target.id] : [];
     }
     return [];
   }
@@ -384,6 +387,14 @@ export class Game {
     const pa = this.pendingAction;
     const actor = this.getPlayer(pa.actorId);
     const target = pa.targetId ? this.getPlayer(pa.targetId) : null;
+
+    // A targeted action can outlive its target: they may have been eliminated during the
+    // challenge/block windows. Drop the effect rather than acting on a dead player.
+    if (target && this.isEliminated(target)) {
+      this._pushLog(`${this._actionLabel(pa.type)} against ${target.name} fizzles — they are already out.`);
+      this.endTurn();
+      return;
+    }
 
     switch (pa.type) {
       case 'income':

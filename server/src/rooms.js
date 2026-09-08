@@ -20,7 +20,13 @@ export class RoomManager {
     const room = {
       code,
       hostId: playerId,
-      players: new Map([[playerId, { id: playerId, name: hostName, socketId: null, connected: true }]]),
+      // `joinIndex` fixes each player's position in the join order for the life of the
+      // room. Map iteration order would usually give the same answer, but host succession
+      // depends on this, so it is recorded explicitly rather than left implicit.
+      nextJoinIndex: 1,
+      players: new Map([
+        [playerId, { id: playerId, name: hostName, socketId: null, connected: true, joinIndex: 0 }],
+      ]),
       game: null,
     };
     this.rooms.set(code, room);
@@ -34,7 +40,13 @@ export class RoomManager {
     if (room.players.size >= MAX_PLAYERS) throw new Error('Room is full.');
 
     const playerId = nanoid(10);
-    room.players.set(playerId, { id: playerId, name, socketId: null, connected: true });
+    room.players.set(playerId, {
+      id: playerId,
+      name,
+      socketId: null,
+      connected: true,
+      joinIndex: room.nextJoinIndex++,
+    });
     return { room, playerId };
   }
 
@@ -71,13 +83,21 @@ export class RoomManager {
     return room;
   }
 
+  // Hands the lead to the earliest-joined player still in the room, preferring someone who
+  // is actually connected so the lobby is never led by a player who has gone.
+  reassignHost(room) {
+    const byJoinOrder = [...room.players.values()].sort((a, b) => a.joinIndex - b.joinIndex);
+    const next = byJoinOrder.find((p) => p.connected) ?? byJoinOrder[0];
+    room.hostId = next?.id ?? null;
+    return room.hostId;
+  }
+
   removePlayer(code, playerId) {
     const room = this.rooms.get(code);
     if (!room) return;
     room.players.delete(playerId);
     if (room.hostId === playerId) {
-      const next = [...room.players.keys()][0];
-      room.hostId = next ?? null;
+      this.reassignHost(room);
     }
     if (room.players.size === 0) {
       this.rooms.delete(code);

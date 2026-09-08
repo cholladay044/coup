@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 //
 // The caller keys this on `forfeitInMs`, so a new value from the server remounts the
 // component with correct initial state rather than needing a reset inside an effect.
-export default function ForfeitNotice({ forfeitInMs, absentNames, canExtend, onExtend }) {
+export default function ForfeitNotice({ forfeitInMs, absentNames, canExtend, onExtend, onKickAbsent }) {
   const [remainingMs, setRemainingMs] = useState(forfeitInMs ?? 0);
 
   useEffect(() => {
@@ -35,9 +35,14 @@ export default function ForfeitNotice({ forfeitInMs, absentNames, canExtend, onE
             : "Maximum wait reached — you win by default if they don't return."}
         </span>
       </span>
-      <button className="secondary forfeit-extend" onClick={onExtend} disabled={!canExtend}>
-        {canExtend ? 'Give them more time' : 'Max wait reached'}
-      </button>
+      <div className="forfeit-actions">
+        <button className="secondary forfeit-extend" onClick={onExtend} disabled={!canExtend}>
+          {canExtend ? 'Give them more time' : 'Max wait reached'}
+        </button>
+        <button className="danger forfeit-kick" onClick={onKickAbsent}>
+          {absentNames.length === 1 ? 'Drop them & return to lobby' : 'Drop them all & return to lobby'}
+        </button>
+      </div>
     </div>
   );
 }
