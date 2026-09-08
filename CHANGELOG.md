@@ -11,6 +11,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/), and vers
 
 Committed to `master` but **not yet deployed** to production.
 
+## [1.3.0] - 2026-09-08
+
+Deployed to Render (`coup-server`) and Vercel (`coup`, alias `coup-canopy.vercel.app`).
+
 ### Added
 - **Leave Lobby.** Players can now leave a lobby explicitly instead of only by closing the
   tab. They return to the home screen and disappear from everyone else's roster
@@ -142,7 +146,8 @@ Initial public release. Deployed to Render (`coup-server`) and Vercel (`coup`).
 - Player name/"(you)" tag overlapping the cards below it when a card is in its "claimed" glow
   state.
 
-[Unreleased]: https://github.com/cholladay044/coup/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/cholladay044/coup/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/cholladay044/coup/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/cholladay044/coup/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/cholladay044/coup/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/cholladay044/coup/releases/tag/v1.0.0
